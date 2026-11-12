@@ -15,6 +15,10 @@ button{font:inherit;font-weight:700;padding:14px 20px;border-radius:12px;border:
 .row{margin:16px 0;text-align:left}.lbl{display:flex;justify-content:space-between;font-weight:600;margin-bottom:6px}
 .track{height:16px;background:var(--track);border-radius:99px;overflow:hidden}.fill{height:100%;width:0;transition:width .5s}
 .muted{color:var(--muted)}
+ul{list-style:none;padding:0;margin:14px 0 0;text-align:left;max-height:50vh;overflow:auto}
+li{display:flex;justify-content:space-between;gap:10px;padding:10px 0;border-top:1px solid var(--border);font-size:.95rem}
+ul{list-style:none;padding:0;margin:12px 0 0;text-align:left}
+li{display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-top:1px solid var(--border);font-size:.9rem}
 </style>
 </head>
 <body>
@@ -25,6 +29,9 @@ button{font:inherit;font-weight:700;padding:14px 20px;border-radius:12px;border:
     <div class="row"><div class="lbl"><span>Yesss, go on!</span><span id="yT"></span></div><div class="track"><div class="fill" id="yB" style="background:#16a34a"></div></div></div>
     <div class="row"><div class="lbl"><span>No, don’t</span><span id="nT"></span></div><div class="track"><div class="fill" id="nB" style="background:#dc2626"></div></div></div>
     <p class="muted" id="tot"></p>
+    <h3>Vote times</h3>
+    <ul id="list"></ul>
+    <ul id="log"></ul>
   </div>
   <p class="muted" id="msg"></p>
 </main>
@@ -39,8 +46,10 @@ $("login").onclick = async () => {
   try{ await signInWithPopup(auth, new GoogleAuthProvider()); }catch(e){ $("msg").textContent = "Sign-in failed."; return; }
   $("login").hidden = true;
   onSnapshot(collection(db, "votes"), snap => {
-    let y = 0, n = 0;
-    snap.forEach(d => { const c = d.data().choice; if(c === "yes") y++; else if(c === "no") n++; });
+    let y = 0, n = 0; const rows = [];
+    snap.forEach(d => { const c = d.data().choice; if(c === "yes") y++; else if(c === "no") n++; rows.push({c, at: d.data().at}); });
+    rows.sort((a, b) => b.at - a.at);
+    $("log").innerHTML = rows.map(r => "<li><span>" + (r.c === "yes" ? "Yes" : "No") + "</span><span>" + new Date(r.at).toLocaleString() + "</span></li>").join("");
     const t = y + n, yp = t ? Math.round(y*100/t) : 0, np = t ? Math.round(n*100/t) : 0;
     $("yB").style.width = yp + "%"; $("nB").style.width = np + "%";
     $("yT").textContent = y + " (" + yp + "%)"; $("nT").textContent = n + " (" + np + "%)";
