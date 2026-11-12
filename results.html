@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Results (private)</title>
+<style>
+:root{--bg:#fff7ed;--card:#fff;--text:#1f2937;--muted:#6b7280;--border:#fed7aa;--track:#e5e7eb}
+@media (prefers-color-scheme:dark){:root{color-scheme:dark;--bg:#1c1917;--card:#292524;--text:#fafaf9;--muted:#a8a29e;--border:#57534e;--track:#44403c}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+.card{width:100%;max-width:520px;background:var(--card);border:1px solid var(--border);border-radius:20px;padding:28px 22px;text-align:center}
+button{font:inherit;font-weight:700;padding:14px 20px;border-radius:12px;border:0;background:#2563eb;color:#fff;cursor:pointer}
+.row{margin:16px 0;text-align:left}.lbl{display:flex;justify-content:space-between;font-weight:600;margin-bottom:6px}
+.track{height:16px;background:var(--track);border-radius:99px;overflow:hidden}.fill{height:100%;width:0;transition:width .5s}
+.muted{color:var(--muted)}
+</style>
+</head>
+<body>
+<main class="card">
+  <h1>Results</h1>
+  <button id="login">Sign in with Google</button>
+  <div id="out" hidden>
+    <div class="row"><div class="lbl"><span>Yesss, go on!</span><span id="yT"></span></div><div class="track"><div class="fill" id="yB" style="background:#16a34a"></div></div></div>
+    <div class="row"><div class="lbl"><span>No, don’t</span><span id="nT"></span></div><div class="track"><div class="fill" id="nB" style="background:#dc2626"></div></div></div>
+    <p class="muted" id="tot"></p>
+  </div>
+  <p class="muted" id="msg"></p>
+</main>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getAuth, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { getFirestore, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { firebaseConfig } from "./firebase-config.js";
+const app = initializeApp(firebaseConfig), auth = getAuth(app), db = getFirestore(app);
+const $ = id => document.getElementById(id);
+$("login").onclick = async () => {
+  try{ await signInWithPopup(auth, new GoogleAuthProvider()); }catch(e){ $("msg").textContent = "Sign-in failed."; return; }
+  $("login").hidden = true;
+  onSnapshot(collection(db, "votes"), snap => {
+    let y = 0, n = 0;
+    snap.forEach(d => { const c = d.data().choice; if(c === "yes") y++; else if(c === "no") n++; });
+    const t = y + n, yp = t ? Math.round(y*100/t) : 0, np = t ? Math.round(n*100/t) : 0;
+    $("yB").style.width = yp + "%"; $("nB").style.width = np + "%";
+    $("yT").textContent = y + " (" + yp + "%)"; $("nT").textContent = n + " (" + np + "%)";
+    $("tot").textContent = t + (t === 1 ? " vote" : " votes");
+    $("out").hidden = false; $("msg").textContent = "";
+  }, () => { $("msg").textContent = "Access denied. Only the owner's Google account can see results."; });
+};
+</script>
+</body>
+</html>

@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Should I do it, guys?</title>
+<style>
+:root{--bg:#fff7ed;--card:#fff;--text:#1f2937;--muted:#6b7280;--border:#fed7aa}
+@media (prefers-color-scheme:dark){:root{color-scheme:dark;--bg:#1c1917;--card:#292524;--text:#fafaf9;--muted:#a8a29e;--border:#57534e}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+.card{width:100%;max-width:520px;background:var(--card);border:1px solid var(--border);border-radius:20px;padding:28px 22px;box-shadow:0 8px 30px rgba(0,0,0,.08);text-align:center}
+h1{font-size:clamp(1.6rem,6vw,2.2rem);margin:0 0 6px}
+.sub{color:var(--muted);margin:0 0 22px}
+.btns{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+button{font:inherit;font-weight:700;font-size:1.05rem;padding:16px 10px;border-radius:14px;border:0;cursor:pointer;color:#fff}
+button:disabled{opacity:.5;cursor:not-allowed}
+.yes{background:#16a34a}.no{background:#dc2626}
+.msg{margin-top:16px;color:var(--muted);min-height:1.2em}
+</style>
+</head>
+<body>
+<main class="card">
+  <h1>Should I do it, guys? 🤔</h1>
+  <p class="sub">Pick one. You can vote only once.</p>
+  <div class="btns">
+    <button class="yes" id="bYes" disabled>Yesss, go on! 🎉</button>
+    <button class="no" id="bNo" disabled>No, don’t 🛑</button>
+  </div>
+  <div class="msg" id="msg">Loading…</div>
+</main>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { firebaseConfig } from "./firebase-config.js";
+
+const bYes = document.getElementById("bYes"), bNo = document.getElementById("bNo"), msg = document.getElementById("msg");
+const app = initializeApp(firebaseConfig), auth = getAuth(app), db = getFirestore(app);
+let uid = null;
+
+function done(){ bYes.disabled = bNo.disabled = true; msg.textContent = "Thanks! Your vote has been recorded."; }
+
+async function vote(choice){
+  bYes.disabled = bNo.disabled = true; msg.textContent = "Saving…";
+  try{
+    await setDoc(doc(db, "votes", uid), { choice, at: Date.now() });
+    try{ localStorage.setItem("voted","1"); }catch(e){}
+    done();
+  }catch(e){ bYes.disabled = bNo.disabled = false; msg.textContent = "Could not save. Please try again."; }
+}
+bYes.onclick = () => vote("yes");
+bNo.onclick = () => vote("no");
+
+onAuthStateChanged(auth, async user => {
+  if(!user){ signInAnonymously(auth).catch(() => msg.textContent = "Could not start. Please reload."); return; }
+  uid = user.uid;
+  try{ if(localStorage.getItem("voted")){ done(); return; } }catch(e){}
+  try{
+    const s = await getDoc(doc(db, "votes", uid)).catch(() => null); // reading is blocked for voters, so this usually fails
+    if(s && s.exists()){ done(); return; }
+  }catch(e){}
+  bYes.disabled = bNo.disabled = false; msg.textContent = "Tap a button to vote.";
+});
+</script>
+</body>
+</html>
